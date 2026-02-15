@@ -4,8 +4,3 @@ All notable changes to this project will be documented in this file. See [standa
 
 ### [2.2.2](https://github.com/ObservaSolutions/sdk-observa/compare/v2.0.1...v2.2.2) (2026-02-15)
 
-# Changelog
-
-Todos los cambios notables del SDK se documentan aquí.
-
-El changelog se genera con Conventional Commits usando `standard-version`.

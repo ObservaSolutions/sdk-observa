@@ -49,6 +49,7 @@ The SDK validates credentials through the ingest health endpoint.
 ```ts
 const result = await sdk.ingest.event({
   event: {
+    schema_version: 1,
     level: 'error',
     message: 'Something went wrong',
     exception: {
@@ -60,6 +61,11 @@ const result = await sdk.ingest.event({
     },
     tags: { service: 'billing' },
     extra: { requestId: 'req_123' },
+    context: {
+      system: sdk.getProcessContextDynamic(),
+      runtime: sdk.getProcessContextStatic({ includeVersions: false }),
+      request: { requestId: 'req_123' },
+    },
   },
   idempotencyKey: 'req_123',
   sdkVersion: '2.0.0',
@@ -75,6 +81,12 @@ Required:
 Optional:
 - `idempotencyKey` is sent as `x-idempotency-key` header (max 128 chars)
 - `sdkVersion` is sent as `x-sdk-version` header
+
+Event context:
+- `schema_version` identifies the event schema version.
+- `context.system` carries dynamic process info (pid, uptime, memory).
+- `context.runtime` carries static runtime info (node, arch, platform, release).
+- `context.request` carries request-scoped metadata (requestId, userId, etc.).
 
 ## Uptime Heartbeats
 

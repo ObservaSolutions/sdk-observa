@@ -45,6 +45,7 @@ Para identificar archivo, función y línea, el SDK debe enviar `exception.stack
 Además se recomienda enviar:
 - `tags` para clasificar origen lógico (por ejemplo `service`, `module`, `env`).
 - `extra` para contexto adicional del negocio (por ejemplo `orderId`, `userId`).
+- `context` para agrupar información técnica del entorno y request.
 
 ## Health del SDK
 Este endpoint valida `apiKey` y `dsnKey` para confirmar conectividad y credenciales.
@@ -93,11 +94,35 @@ Este endpoint valida `apiKey` y `dsnKey` para confirmar conectividad y credencia
   "event": {
     "event_id": "evt_123",
     "timestamp": "2026-01-25T10:00:00.000Z",
+    "schema_version": 1,
     "level": "error",
     "message": "Error en servicio",
     "exception": {
       "type": "Error",
       "value": "Timeout"
+    },
+    "context": {
+      "system": {
+        "pid": 1234,
+        "uptimeSeconds": 420,
+        "memory": {
+          "rss": 123456,
+          "heapTotal": 123456,
+          "heapUsed": 123456,
+          "external": 123456,
+          "arrayBuffers": 123456
+        }
+      },
+      "runtime": {
+        "node": "20.0.0",
+        "platform": "linux",
+        "arch": "x64",
+        "releaseName": "node"
+      },
+      "request": {
+        "requestId": "req_123",
+        "userId": "user_123"
+      }
     },
     "tags": {
       "service": "billing"
@@ -185,3 +210,5 @@ Este endpoint valida `apiKey` y `dsnKey` para confirmar conectividad y credencia
 - Normalizar `level` a minúsculas.
 - Registrar `x-sdk-version` para trazabilidad.
 - Incluir `tags` y `extra` consistentes para facilitar agrupaciones y filtros.
+- Usar `context.system` para datos dinámicos y `context.runtime` para datos estáticos.
+- Evitar enviar `runtime.versions` si no es necesario por tamaño o privacidad.
