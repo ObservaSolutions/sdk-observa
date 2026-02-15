@@ -46,3 +46,12 @@ export type { UptimeEvent, UptimeStatus, UptimeHeartbeatInput, UptimeSummary } f
  * Ingestion types.
  */
 export type { IngestEvent, IngestLevel, IngestRequest, IngestResponse, IngestException, Stacktrace, StacktraceFrame } from './domain/ingest'
+export type {
+  ProcessContext,
+  ProcessContextDynamic,
+  ProcessContextDynamicOptions,
+  ProcessContextOptions,
+  ProcessContextStatic,
+  ProcessContextStaticOptions,
+} from './utils/processContext'
+export { getProcessContext, getProcessContextDynamic, getProcessContextStatic } from './utils/processContext'

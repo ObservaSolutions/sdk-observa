@@ -60,4 +60,51 @@ describe('ObservaSDK', () => {
         expect(eventOptions.headers['x-idempotency-key']).toBe('req_1')
         expect(eventOptions.headers['x-sdk-version']).toBe('2.0.0')
     })
+
+    test('getProcessContext expone datos del proceso', () => {
+        const fetchMock = (jest.fn() as any).mockImplementation(async () => ({
+            ok: true,
+            status: 200,
+            text: async () => JSON.stringify({ ok: true }),
+        }))
+        global.fetch = fetchMock as any
+        const sdk = new ObservaSDK({ apiKey: 'key_1', dsnKey: 'dsn_456', baseUrl: 'http://localhost' })
+        const context = sdk.getProcessContext()
+        expect(context.pid).toBe(process.pid)
+        expect(context.node).toBe(process.versions.node)
+        expect(context.platform).toBe(process.platform)
+        expect(context.arch).toBe(process.arch)
+    })
+
+    test('getProcessContext permite excluir data estática', () => {
+        const fetchMock = (jest.fn() as any).mockImplementation(async () => ({
+            ok: true,
+            status: 200,
+            text: async () => JSON.stringify({ ok: true }),
+        }))
+        global.fetch = fetchMock as any
+        const sdk = new ObservaSDK({ apiKey: 'key_1', dsnKey: 'dsn_456', baseUrl: 'http://localhost' })
+        const context = sdk.getProcessContext({ includeStatic: false })
+        expect(context.versions).toBeUndefined()
+        expect(context.node).toBeUndefined()
+        expect(context.platform).toBeUndefined()
+        expect(context.arch).toBeUndefined()
+        expect(context.pid).toBe(process.pid)
+    })
+
+    test('getProcessContextStatic y getProcessContextDynamic separan contexto', () => {
+        const fetchMock = (jest.fn() as any).mockImplementation(async () => ({
+            ok: true,
+            status: 200,
+            text: async () => JSON.stringify({ ok: true }),
+        }))
+        global.fetch = fetchMock as any
+        const sdk = new ObservaSDK({ apiKey: 'key_1', dsnKey: 'dsn_456', baseUrl: 'http://localhost' })
+        const staticContext = sdk.getProcessContextStatic({ includeVersions: false })
+        const dynamicContext = sdk.getProcessContextDynamic()
+        expect(staticContext.versions).toBeUndefined()
+        expect(staticContext.node).toBe(process.versions.node)
+        expect(dynamicContext.pid).toBe(process.pid)
+        expect(dynamicContext.uptimeSeconds).toBeDefined()
+    })
 })

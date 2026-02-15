@@ -1,6 +1,17 @@
 import { IngestApi } from './apis/ingestApi'
 import { UptimeApi } from './apis/uptimeApi'
 import { HttpClient, type RetryPolicy } from './http/httpClient'
+import {
+    getProcessContext,
+    getProcessContextDynamic,
+    getProcessContextStatic,
+    type ProcessContext,
+    type ProcessContextDynamic,
+    type ProcessContextDynamicOptions,
+    type ProcessContextOptions,
+    type ProcessContextStatic,
+    type ProcessContextStaticOptions,
+} from './utils/processContext'
 
 /**
  * SDK configuration options.
@@ -75,5 +86,17 @@ export class ObservaSDK {
      */
     setApiKey(apiKey: string) {
         this.http.setApiKey(apiKey)
+    }
+
+    getProcessContext(options?: ProcessContextOptions): ProcessContext {
+        return getProcessContext(options)
+    }
+
+    getProcessContextStatic(options?: ProcessContextStaticOptions): ProcessContextStatic {
+        return getProcessContextStatic(options)
+    }
+
+    getProcessContextDynamic(options?: ProcessContextDynamicOptions): ProcessContextDynamic {
+        return getProcessContextDynamic(options)
     }
 }
