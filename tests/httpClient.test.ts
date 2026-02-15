@@ -27,10 +27,25 @@ describe('HttpClient', () => {
         const fetchMock = (jest.fn() as any).mockImplementation(async () => ({
             ok: false,
             status: 401,
+            headers: { get: () => null },
             text: async () => JSON.stringify({ message: 'unauthorized' }),
         }))
         global.fetch = fetchMock as any
         const client = new HttpClient({ baseUrl: 'http://localhost', apiKey: 'key123' })
         await expect(client.get('/private', { auth: 'apiKey' })).rejects.toBeInstanceOf(AuthError)
+    })
+
+    test('agrega content-type y construye url con baseUrl', async () => {
+        const fetchMock = (jest.fn() as any).mockImplementation(async () => ({
+            ok: true,
+            status: 200,
+            text: async () => JSON.stringify({ ok: true }),
+        }))
+        global.fetch = fetchMock as any
+        const client = new HttpClient({ baseUrl: 'http://localhost/api', apiKey: 'key123' })
+        await client.post('ingest/events', { dsnKey: 'dsn_1', event: { level: 'error' } }, { auth: 'apiKey' })
+        const [url, options] = (global.fetch as any).mock.calls[0]
+        expect(url).toBe('http://localhost/api/ingest/events')
+        expect(options.headers['content-type']).toBe('application/json')
     })
 })

@@ -1,4 +1,4 @@
-import { AuthError, NetworkError, TimeoutError, ServerError, mapHttpError } from './errors'
+import { AuthError, NetworkError, TimeoutError, mapHttpError } from './errors'
 
 /**
  * Authentication mode per request.
@@ -81,7 +81,7 @@ export class HttpClient {
     private readonly timeoutMs: number
     private readonly headers: Record<string, string>
     private readonly retry?: RetryPolicy
-    private healthCheckPromise?: Promise<void>
+    private healthCheckPromise?: Promise<unknown>
 
     /**
      * Creates an HTTP client with baseUrl and optional apiKey.
@@ -101,10 +101,11 @@ export class HttpClient {
         this.apiKey = apiKey
     }
 
-    startHealthCheck() {
+    startHealthCheck(healthCheck: () => Promise<unknown>) {
         if (!this.healthCheckPromise) {
-            this.healthCheckPromise = this.checkHealth()
-            this.healthCheckPromise.catch(() => undefined)
+            const promise = healthCheck()
+            this.healthCheckPromise = promise
+            promise.catch(() => undefined)
         }
     }
 
@@ -251,36 +252,6 @@ export class HttpClient {
             return JSON.parse(text)
         } catch {
             return text
-        }
-    }
-
-    private async checkHealth(): Promise<void> {
-        const url = this.buildUrl('/health')
-        const controller = new AbortController()
-        const timer = setTimeout(() => controller.abort(), this.timeoutMs)
-
-        try {
-            const response = await fetch(url, {
-                method: 'GET',
-                headers: this.headers,
-                signal: controller.signal,
-            })
-            const data = await this.readBody(response)
-            if (!response.ok) {
-                throw mapHttpError(response.status, data)
-            }
-            if (!data || typeof data !== 'object' || (data as { status?: string }).status !== 'ok') {
-                throw new ServerError('Health check failed', { details: data })
-            }
-        } catch (error: any) {
-            if (error?.name === 'AbortError') {
-                throw new TimeoutError('Request timeout')
-            }
-            if (error instanceof NetworkError || error instanceof TimeoutError) throw error
-            if (error instanceof Error && 'status' in error) throw error
-            throw new NetworkError('Network error', { details: error })
-        } finally {
-            clearTimeout(timer)
         }
     }
 

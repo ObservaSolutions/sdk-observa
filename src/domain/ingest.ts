@@ -1,7 +1,24 @@
 /**
  * Severity levels for events.
  */
-export type IngestLevel = 'debug' | 'info' | 'warn' | 'error' | 'fatal'
+export type IngestLevel = 'debug' | 'info' | 'warning' | 'warn' | 'error' | 'fatal'
+
+export type StacktraceFrame = {
+    filename?: string
+    function?: string
+    lineno?: number
+    colno?: number
+}
+
+export type Stacktrace = {
+    frames: StacktraceFrame[]
+}
+
+export type IngestException = {
+    type: string
+    value: string
+    stacktrace?: Stacktrace
+}
 
 /**
  * Ingestion event.
@@ -23,10 +40,9 @@ export type IngestEvent = {
      * Main message.
      */
     message?: string
-    /**
-     * Free-form context payload.
-     */
-    payload?: unknown
+    exception?: IngestException
+    tags?: Record<string, string>
+    extra?: Record<string, unknown>
 }
 
 /**
@@ -41,6 +57,8 @@ export type IngestRequest = {
      * Event to record.
      */
     event: IngestEvent
+    idempotencyKey?: string
+    sdkVersion?: string
 }
 
 /**

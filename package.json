@@ -1,6 +1,6 @@
 {
   "name": "@observa/sdk",
-  "version": "1.0.4",
+  "version": "2.0.0",
   "description": "Observa SDK for Node.js",
   "type": "module",
   "main": "./dist/index.js",

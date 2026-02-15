@@ -14,7 +14,7 @@ describe('ObservaSDK', () => {
             .mockImplementationOnce(async () => ({
                 ok: true,
                 status: 200,
-                text: async () => JSON.stringify({ status: 'ok', duration_ms: 0 }),
+                text: async () => JSON.stringify({ ok: true }),
             }))
             .mockImplementationOnce(async () => ({
                 ok: true,
@@ -22,12 +22,42 @@ describe('ObservaSDK', () => {
                 text: async () => JSON.stringify({ event_id: 'evt_1' }),
             }))
         global.fetch = fetchMock as any
-        const sdk = new ObservaSDK({ apiKey: 'dsnKey', dsnKey: 'dsn_123' })
+        const sdk = new ObservaSDK({ apiKey: 'dsnKey', dsnKey: 'dsn_123', baseUrl: 'http://localhost' })
         const result = await sdk.ingest.event({
             event: { level: 'error', message: 'boom' },
         })
         expect(result.event_id).toBe('evt_1')
-        const [, options] = (global.fetch as any).mock.calls[1]
-        expect(options.headers['x-api-key']).toBe('dsnKey')
+        const [healthUrl, healthOptions] = (global.fetch as any).mock.calls[0]
+        expect(healthUrl).toBe('http://localhost/v1/ingest/health')
+        expect(healthOptions.method).toBe('POST')
+        expect(healthOptions.headers['x-api-key']).toBe('dsnKey')
+        expect(JSON.parse(healthOptions.body).dsnKey).toBe('dsn_123')
+        const [eventUrl, eventOptions] = (global.fetch as any).mock.calls[1]
+        expect(eventUrl).toBe('http://localhost/v1/ingest/events')
+        expect(eventOptions.headers['x-api-key']).toBe('dsnKey')
+    })
+
+    test('ingest.event envía headers opcionales', async () => {
+        const fetchMock = (jest.fn() as any)
+            .mockImplementationOnce(async () => ({
+                ok: true,
+                status: 200,
+                text: async () => JSON.stringify({ ok: true }),
+            }))
+            .mockImplementationOnce(async () => ({
+                ok: true,
+                status: 200,
+                text: async () => JSON.stringify({ event_id: 'evt_2' }),
+            }))
+        global.fetch = fetchMock as any
+        const sdk = new ObservaSDK({ apiKey: 'key_1', dsnKey: 'dsn_456', baseUrl: 'http://localhost' })
+        await sdk.ingest.event({
+            event: { level: 'error', message: 'boom' },
+            idempotencyKey: 'req_1',
+            sdkVersion: '2.0.0',
+        })
+        const [, eventOptions] = (global.fetch as any).mock.calls[1]
+        expect(eventOptions.headers['x-idempotency-key']).toBe('req_1')
+        expect(eventOptions.headers['x-sdk-version']).toBe('2.0.0')
     })
 })

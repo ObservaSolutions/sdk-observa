@@ -45,4 +45,4 @@ export type { UptimeEvent, UptimeStatus, UptimeHeartbeatInput, UptimeSummary } f
 /**
  * Ingestion types.
  */
-export type { IngestEvent, IngestLevel, IngestRequest, IngestResponse } from './domain/ingest'
+export type { IngestEvent, IngestLevel, IngestRequest, IngestResponse, IngestException, Stacktrace, StacktraceFrame } from './domain/ingest'

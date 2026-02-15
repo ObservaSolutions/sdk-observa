@@ -14,6 +14,7 @@ export type ObservaSDKOptions = {
      * Project DSN used to identify the destination of events and heartbeats.
      */
     dsnKey: string
+    baseUrl?: string
     /**
      * HTTP request timeout in milliseconds.
      */
@@ -31,7 +32,7 @@ export type ObservaSDKOptions = {
 /**
  * Fixed backend target for the SDK.
  */
-const DEFAULT_BASE_URL = 'https://backend-observa-production.up.railway.app'
+const DEFAULT_BASE_URL = 'https://backend-observa-production.up.railway.app/v1'
 
 /**
  * Main SDK for error ingestion and uptime heartbeats.
@@ -55,16 +56,18 @@ export class ObservaSDK {
         if (!options || !options.apiKey || !options.dsnKey) {
             throw new Error('ObservaSDK requires both apiKey and dsnKey')
         }
+        const baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, '')
+        const normalizedBaseUrl = baseUrl.endsWith('/v1') ? baseUrl : `${baseUrl}/v1`
         this.http = new HttpClient({
-            baseUrl: DEFAULT_BASE_URL,
+            baseUrl: normalizedBaseUrl,
             apiKey: options.apiKey,
             timeoutMs: options.timeoutMs,
             retry: options.retry,
             headers: options.headers,
         })
-        this.http.startHealthCheck()
-        this.uptime = new UptimeApi(this.http, options.dsnKey)
         this.ingest = new IngestApi(this.http, options.dsnKey)
+        this.uptime = new UptimeApi(this.http, options.dsnKey)
+        this.http.startHealthCheck(() => this.ingest.health(options.dsnKey))
     }
 
     /**

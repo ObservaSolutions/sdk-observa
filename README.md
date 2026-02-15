@@ -10,7 +10,7 @@ It is not designed for browser usage.
 ## SDK Contract
 
 This SDK is an official client for the Observa backend.
-It targets a fixed API and does not support custom base URLs.
+You can optionally override the backend `baseUrl`; the SDK ensures the `/v1` prefix.
 
 ## Concepts
 
@@ -31,15 +31,17 @@ import { ObservaSDK } from '@observa/sdk'
 const sdk = new ObservaSDK({
   apiKey: 'org_api_key',
   dsnKey: 'project_dsn',
+  baseUrl: 'https://backend-observa-production.up.railway.app',
 })
 ```
 
-The SDK targets the Observa backend health endpoint for internal availability checks.
+The SDK validates credentials through the ingest health endpoint.
 
 ## Defaults
 
 - Timeout: 5 seconds
 - Retries: disabled by default
+- `baseUrl` defaults to the Observa backend and is normalized to `/v1`
 - `dsnKey` is required for ingest and uptime writes
 
 ## Ingest Events
@@ -49,8 +51,18 @@ const result = await sdk.ingest.event({
   event: {
     level: 'error',
     message: 'Something went wrong',
-    payload: { requestId: 'req_123' },
+    exception: {
+      type: 'Error',
+      value: 'Timeout',
+      stacktrace: {
+        frames: [{ filename: 'src/service.ts', function: 'doWork', lineno: 42, colno: 13 }],
+      },
+    },
+    tags: { service: 'billing' },
+    extra: { requestId: 'req_123' },
   },
+  idempotencyKey: 'req_123',
+  sdkVersion: '2.0.0',
 })
 
 console.log(result.event_id)
@@ -59,6 +71,10 @@ console.log(result.event_id)
 Required:
 - `apiKey` is sent as `x-api-key` header
 - `dsnKey` is sent in the body as `dsnKey`
+
+Optional:
+- `idempotencyKey` is sent as `x-idempotency-key` header (max 128 chars)
+- `sdkVersion` is sent as `x-sdk-version` header
 
 ## Uptime Heartbeats
 
@@ -71,6 +87,13 @@ const heartbeat = await sdk.uptime.recordHeartbeat({
 })
 
 console.log(heartbeat.id)
+```
+
+## Ingest Health
+
+```ts
+const health = await sdk.ingest.health()
+console.log(health.ok)
 ```
 
 ## Uptime Queries
