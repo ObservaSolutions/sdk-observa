@@ -21,7 +21,16 @@ describe('IngestApi', () => {
         const client = new HttpClient({ baseUrl: 'http://localhost', apiKey: 'key_1' })
         const api = new IngestApi(client, 'dsn_1')
         await api.event({
-            event: { level: 'error', message: 'boom' },
+            event: {
+                level: 'error',
+                message: 'boom',
+                schema_version: 1,
+                context: {
+                    system: { pid: 123, uptimeSeconds: 10 },
+                    runtime: { node: '20.0.0', platform: 'linux', arch: 'x64' },
+                    request: { requestId: 'req_1', userId: 'user_1' },
+                },
+            },
             idempotencyKey: 'req_10',
             sdkVersion: '2.0.0',
         })
@@ -29,7 +38,12 @@ describe('IngestApi', () => {
         expect(url).toBe('http://localhost/ingest/events')
         expect(options.headers['x-idempotency-key']).toBe('req_10')
         expect(options.headers['x-sdk-version']).toBe('2.0.0')
-        expect(JSON.parse(options.body).dsnKey).toBe('dsn_1')
+        const body = JSON.parse(options.body)
+        expect(body.dsnKey).toBe('dsn_1')
+        expect(body.event.schema_version).toBe(1)
+        expect(body.event.context.system.pid).toBe(123)
+        expect(body.event.context.runtime.arch).toBe('x64')
+        expect(body.event.context.request.requestId).toBe('req_1')
     })
 
     test('valida tamaño de idempotencyKey', async () => {

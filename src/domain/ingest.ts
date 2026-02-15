@@ -1,3 +1,5 @@
+import type { ProcessContextDynamic, ProcessContextStatic } from '../utils/processContext'
+
 /**
  * Severity levels for events.
  */
@@ -20,6 +22,18 @@ export type IngestException = {
     stacktrace?: Stacktrace
 }
 
+export type RequestContext = {
+    requestId?: string
+    userId?: string
+    [key: string]: unknown
+}
+
+export type IngestEventContext = {
+    system?: ProcessContextDynamic
+    runtime?: ProcessContextStatic
+    request?: RequestContext
+}
+
 /**
  * Ingestion event.
  */
@@ -32,6 +46,7 @@ export type IngestEvent = {
      * Event ISO timestamp.
      */
     timestamp?: string
+    schema_version?: number
     /**
      * Severity level.
      */
@@ -41,6 +56,7 @@ export type IngestEvent = {
      */
     message?: string
     exception?: IngestException
+    context?: IngestEventContext
     tags?: Record<string, string>
     extra?: Record<string, unknown>
 }
