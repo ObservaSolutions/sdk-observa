@@ -16,8 +16,8 @@ Incluye además el flujo de provisión de credenciales (API key y DSN) necesario
 3. Guardar `apiKey` y `dsnKey` en la configuración del SDK.
 
 ### Rutas relacionadas
-- `POST /organizations`
-- `POST /organizations/:organizationId/projects`
+- `POST /v1/organizations`
+- `POST /v1/organizations/:organizationId/projects`
 
 ### Respuesta esperada (resumen)
 - `apiKey.key` se devuelve solo una vez al crear la organización.
@@ -27,22 +27,25 @@ Incluye además el flujo de provisión de credenciales (API key y DSN) necesario
 El SDK usa autenticación por API key en header:
 - Header: `x-api-key: <apiKey>`
 Además envía el `dsnKey` en el body para identificar el proyecto.
+Cuando la API key tiene scope por proyecto, el `dsnKey` debe pertenecer a uno de esos proyectos.
 
 ## Flujo principal del SDK
-1. Inicializar el SDK con `baseUrl`, `apiKey`, `dsnKey`.
-2. En cada error, construir un evento y enviarlo a `/ingest/events`.
-3. Si se habilita uptime, enviar heartbeats a `/uptime/heartbeats`.
+1. Inicializar el SDK con `baseUrl` (incluye `/v1`), `apiKey`, `dsnKey`.
+2. En cada error, construir un evento y enviarlo a `/v1/ingest/events`.
+3. Si se habilita uptime, enviar heartbeats a `/v1/uptime/heartbeats`.
 4. Manejar errores HTTP y reintentos desde el SDK.
 
 ## Endpoints SDK
 
 ### 1) Ingesta de eventos
 **Ruta**
-- `POST /ingest/events`
+- `POST /v1/ingest/events`
 
 **Headers**
 - `Content-Type: application/json`
 - `x-api-key: <apiKey>`
+- `x-idempotency-key: <string>` (opcional, máximo 128 caracteres)
+- `x-sdk-version: <string>` (opcional)
 
 **Body**
 ```json
@@ -84,6 +87,10 @@ Además envía el `dsnKey` en el body para identificar el proyecto.
 }
 ```
 
+**Headers de respuesta**
+- `x-protocol-version: 1`
+- `x-sdk-version: <string>` (solo si se envía el header en la request)
+
 **Reglas y validaciones**
 - `dsnKey` es obligatorio.
 - `event` debe ser un objeto.
@@ -94,18 +101,20 @@ Además envía el `dsnKey` en el body para identificar el proyecto.
 - Si Redis está habilitado, el evento se encola y se persiste en background.
 
 **Errores comunes**
-- `400 Invalid event payload` si falta `dsnKey` o `event`.
+- `400 INVALID_PAYLOAD` si falta `dsnKey` o `event`.
+- `400 INVALID_IDEMPOTENCY_KEY` si `x-idempotency-key` supera 128 caracteres.
 - `400 Payload too large` si el body supera 64 KB.
 - `400 Ingest queue full` si la cola en Redis supera el límite.
-- `404 Project not found` si el `dsnKey` no existe.
-- `403 Organization mismatch` si la API key no pertenece a la organización del proyecto.
+- `404 INVALID_DSN` si el `dsnKey` no existe.
+- `403 INVALID_API_KEY` si la API key no pertenece a la organización o no tiene acceso al proyecto.
 
 **Notas de idempotencia**
 - Si `event_id` se repite para el mismo proyecto, la respuesta devuelve el `event_id` existente.
+ - `x-idempotency-key` permite reintentos seguros cuando no se envía `event_id`.
 
 ### 2) Ingesta de heartbeats de uptime
 **Ruta**
-- `POST /uptime/heartbeats`
+- `POST /v1/uptime/heartbeats`
 
 **Headers**
 - `Content-Type: application/json`

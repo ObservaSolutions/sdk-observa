@@ -71,6 +71,10 @@ export type IngestRequest = {
      */
     dsnKey?: string
     /**
+     * Public key for frontend/mobile projects.
+     */
+    publicKey?: string
+    /**
      * Event to record.
      */
     event: IngestEvent

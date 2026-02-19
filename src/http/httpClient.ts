@@ -101,6 +101,13 @@ export class HttpClient {
         this.apiKey = apiKey
     }
 
+    /**
+     * Checks if an API key is configured.
+     */
+    hasApiKey(): boolean {
+        return !!this.apiKey
+    }
+
     startHealthCheck(healthCheck: () => Promise<unknown>) {
         if (!this.healthCheckPromise) {
             const promise = healthCheck()

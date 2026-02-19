@@ -1,49 +1,30 @@
-# Users
+# Módulo Users
 
-## Objetivo
-Gestionar usuarios internos por organización, con credenciales seguras y roles coherentes para el acceso web.
+Este módulo gestiona la información personal y las credenciales de los usuarios registrados en el sistema. Provee mecanismos para la gestión de perfil, cambios de contraseña y roles dentro de las organizaciones.
 
-## Rol en el negocio
-Representa a las personas que operan la plataforma. Define el control de acceso por rol y el ciclo de vida de credenciales, habilitando administración de proyectos e incidentes.
+## Entidades Principales
 
-## Entidades y propiedades
-- Usuario: id, organizationId, name, username, email, passwordHash, passwordSalt, role, isActive, createdAt, updatedAt.
-- Roles: admin y member (admin puede crear miembros y realizar acciones administrativas).
+### User
+- **Name**: Nombre completo del usuario.
+- **Username**: Identificador único de usuario (opcionalmente usado en login).
+- **Email**: Correo electrónico principal (usado para login).
+- **Password**: Hash de la contraseña segura.
+- **IsActive**: Estado del usuario (bloqueo por seguridad o desactivación manual).
 
-## Flujos principales
-- Alta de admin inicial durante la creación de organización.
-- Alta de miembros por un admin autenticado.
-- Validación de credenciales para login web (auth-web).
+### Relación con Organizaciones
+- Un usuario puede pertenecer a múltiples organizaciones con diferentes roles (`OWNER`, `ADMIN`, `MEMBER`).
+- La entidad `OrganizationUser` gestiona esta relación muchos-a-muchos.
 
-## Reglas y validaciones
-- name, username y email se normalizan antes de persistir.
-- email debe tener formato válido y ser único.
-- username es único dentro de la organización.
-- Las credenciales se almacenan con hash y salt; no se guarda texto plano.
-- Usuarios inactivos no pueden autenticarse.
+## Funcionalidad
 
-## Consumos y dependencias
-- Consumo desde auth-web para validar credenciales.
-- Autenticación vía JWT bearer y roles para endpoints administrativos.
-- organizationId se toma del JWT; el path se valida contra el token.
+### Perfil de Usuario
+- **Actualización**: Los usuarios pueden modificar su nombre y correo.
+- **Cambio de Contraseña**: Endpoint seguro para actualizar la contraseña actual.
+- **Recuperación**: Flujo de restablecimiento de contraseña vía token por email.
 
-## Endpoints
-- `POST /organizations/:organizationId/users` crea un miembro (rol admin, JWT requerido).
-- `GET /organizations/:organizationId/users` lista usuarios de la organización (rol member o admin, JWT requerido).
+### Seguridad
+- **Hasheo de contraseñas**: Se utiliza bcrypt para almacenar las contraseñas de forma segura.
+- **Token JWT**: Al hacer login, se genera un JWT que contiene el ID del usuario y roles básicos.
 
-## Casos de error
-- `Invalid user data` cuando faltan name, username, email o password.
-- `Invalid email` cuando el formato no es válido.
-- `Email already in use` cuando el email ya existe.
-- `Username already in use` cuando el username ya existe en la organización.
-
-## Ejemplos de payloads
-- Crear miembro
-  ```json
-  {
-    "name": "Ada Lovelace",
-    "username": "ada",
-    "email": "ada@observa.com",
-    "password": "secret123"
-  }
-  ```
+## Relación con Auth
+El módulo `Auth` utiliza el servicio de `Users` para buscar usuarios por email durante el login y validar sus credenciales.

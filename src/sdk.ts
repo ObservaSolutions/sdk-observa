@@ -20,11 +20,15 @@ export type ObservaSDKOptions = {
     /**
      * Organization API key used to authenticate SDK requests.
      */
-    apiKey: string
+    apiKey?: string
     /**
      * Project DSN used to identify the destination of events and heartbeats.
      */
     dsnKey: string
+    /**
+     * Public key for frontend/mobile projects.
+     */
+    publicKey?: string
     baseUrl?: string
     /**
      * HTTP request timeout in milliseconds.
@@ -62,11 +66,11 @@ export class ObservaSDK {
     private readonly http: HttpClient
 
     /**
-     * Creates an SDK instance with required apiKey and dsnKey.
+     * Creates an SDK instance with required dsnKey and either apiKey or publicKey.
      */
     constructor(options: ObservaSDKOptions) {
-        if (!options || !options.apiKey || !options.dsnKey) {
-            throw new Error('ObservaSDK requires both apiKey and dsnKey')
+        if (!options || (!options.apiKey && !options.publicKey) || !options.dsnKey) {
+            throw new Error('ObservaSDK requires dsnKey and either apiKey or publicKey')
         }
         const baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, '')
         const normalizedBaseUrl = baseUrl.endsWith('/v1') ? baseUrl : `${baseUrl}/v1`
@@ -77,9 +81,9 @@ export class ObservaSDK {
             retry: options.retry,
             headers: options.headers,
         })
-        this.ingest = new IngestApi(this.http, options.dsnKey, options.ingest)
+        this.ingest = new IngestApi(this.http, options.dsnKey, options.ingest, options.publicKey)
         this.uptime = new UptimeApi(this.http, options.dsnKey)
-        this.http.startHealthCheck(() => this.ingest.health(options.dsnKey))
+        this.http.startHealthCheck(() => this.ingest.health(options.dsnKey, options.publicKey))
     }
 
     /**

@@ -5,7 +5,7 @@ Official SDK for sending ingest events and uptime heartbeats to Observa.
 ## Who is this for?
 
 This SDK is intended for backend services, workers, and server-side applications.
-It is not designed for browser usage.
+It now also supports browser environments using `publicKey`.
 
 ## SDK Contract
 
@@ -14,7 +14,8 @@ You can optionally override the backend `baseUrl`; the SDK ensures the `/v1` pre
 
 ## Concepts
 
-- **apiKey**: Organization-level credential used for authentication.
+- **apiKey**: Organization-level credential used for authentication (Backend).
+- **publicKey**: Project-level credential for public ingestion (Frontend/Mobile).
 - **dsnKey**: Project-level identifier used to route events and heartbeats.
 
 ## Installation
@@ -24,6 +25,8 @@ npm install @observa/sdk
 ```
 
 ## Usage
+
+### Backend (Server-side)
 
 ```ts
 import { ObservaSDK } from '@observa/sdk'
@@ -35,6 +38,20 @@ const sdk = new ObservaSDK({
 })
 ```
 
+### Frontend (Browser)
+
+```ts
+import { ObservaSDK } from '@observa/sdk'
+
+const sdk = new ObservaSDK({
+  publicKey: 'project_public_key',
+  dsnKey: 'project_dsn',
+  baseUrl: 'https://backend-observa-production.up.railway.app',
+})
+```
+
+**Note**: Mobile support is coming soon.
+
 The SDK validates credentials through the ingest health endpoint.
 
 ## Defaults
@@ -43,6 +60,8 @@ The SDK validates credentials through the ingest health endpoint.
 - Retries: disabled by default
 - `baseUrl` defaults to the Observa backend and is normalized to `/v1`
 - `dsnKey` is required for ingest and uptime writes
+- `apiKey` is required for backend usage
+- `publicKey` is required for frontend usage
 
 ## Ingest Events
 

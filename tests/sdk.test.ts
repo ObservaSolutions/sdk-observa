@@ -107,4 +107,43 @@ describe('ObservaSDK', () => {
         expect(dynamicContext.pid).toBe(process.pid)
         expect(dynamicContext.uptimeSeconds).toBeDefined()
     })
+
+    test('ingest.event usa publicKey cuando no hay apiKey', async () => {
+        const fetchMock = (jest.fn() as any)
+            .mockImplementationOnce(async () => ({
+                ok: true,
+                status: 200,
+                text: async () => JSON.stringify({ ok: true }),
+            }))
+            .mockImplementationOnce(async () => ({
+                ok: true,
+                status: 200,
+                text: async () => JSON.stringify({ event_id: 'evt_pk' }),
+            }))
+        global.fetch = fetchMock as any
+        const sdk = new ObservaSDK({ publicKey: 'pk_test', dsnKey: 'dsn_test', baseUrl: 'http://localhost' })
+
+        const result = await sdk.ingest.event({
+            event: { level: 'error', message: 'browser error' },
+        })
+
+        expect(result.event_id).toBe('evt_pk')
+
+        // Check health check call
+        const [healthUrl, healthOptions] = (global.fetch as any).mock.calls[0]
+        expect(healthUrl).toBe('http://localhost/v1/ingest/health')
+        expect(healthOptions.headers['x-api-key']).toBeUndefined()
+        const healthBody = JSON.parse(healthOptions.body)
+        expect(healthBody.dsnKey).toBe('dsn_test')
+        expect(healthBody.publicKey).toBe('pk_test')
+
+        // Check event call
+        const [eventUrl, eventOptions] = (global.fetch as any).mock.calls[1]
+        expect(eventUrl).toBe('http://localhost/v1/ingest/events')
+        expect(eventOptions.headers['x-api-key']).toBeUndefined()
+        const eventBody = JSON.parse(eventOptions.body)
+        expect(eventBody.dsnKey).toBe('dsn_test')
+        expect(eventBody.publicKey).toBe('pk_test')
+        expect(eventBody.event.message).toBe('browser error')
+    })
 })

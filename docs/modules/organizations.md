@@ -1,62 +1,39 @@
-# Organizations
+# Módulo Organizations
 
-## Objetivo
-Centralizar el alta y la administración de organizaciones, que son el contenedor de usuarios, proyectos, API keys y eventos.
+Este módulo es responsable de la gestión de organizaciones (tenants) dentro del sistema. Una organización es el contenedor principal de todos los recursos (usuarios, proyectos, API keys, incidentes) y define los límites de seguridad y facturación.
 
-## Rol en el negocio
-La organización representa al cliente del sistema. Desde aquí se gobierna todo lo demás: credenciales, usuarios con roles y proyectos que reportan errores. El flujo de onboarding nace en este módulo y habilita inmediatamente el uso del SDK y la web.
+## Entidades Principales
 
-## Flujo principal
-1. Alta pública de organización con datos del admin.
-2. Creación del usuario admin inicial.
-3. Emisión de una API key activa para integrar el SDK y operar la plataforma.
+### Organization
+- **Name**: Nombre descriptivo de la organización.
+- **Owner**: Usuario propietario de la organización (tiene control total).
+- **Users**: Lista de usuarios que pertenecen a la organización con sus roles.
+- **ApiKeys**: Lista de claves de acceso para sistemas externos.
+- **Projects**: Lista de proyectos dentro de la organización.
 
-## Entidades y propiedades
-- Organization: id, name, createdAt, updatedAt.
-- Admin inicial: usuario con rol admin y credenciales válidas.
-- ApiKey activa: entregada una sola vez en texto plano.
+### OrganizationUser
+- **User**: Referencia al usuario.
+- **Organization**: Referencia a la organización.
+- **Role**: Rol asignado (`OWNER`, `ADMIN`, `MEMBER`).
+- **IsActive**: Estado de la membresía.
 
-## Reglas y validaciones
-- El nombre es obligatorio y se normaliza antes de persistir.
-- El admin inicial requiere nombre, username, email válido y contraseña.
-- La actualización de la organización requiere JWT bearer y rol al menos de miembro.
-- organizationId se toma del JWT; el path se valida contra el token.
-- La lectura pública permite mostrar información básica sin credenciales.
+## Funcionalidad
 
-## Consumos y dependencias
-- Consume users para crear el admin inicial.
-- Consume api-keys para emitir la key activa.
-- Expone datos públicos para páginas de estado o perfil público.
+### Gestión de Organizaciones
+- **Creación**: Al crear una organización, el usuario creador se asigna automáticamente como `OWNER`.
+- **Actualización**: Solo el `OWNER` o `ADMIN` pueden cambiar el nombre o configuración.
+- **Eliminación**: Solo el `OWNER` puede eliminar la organización (cascada a todos los recursos).
 
-## Endpoints
-- `POST /organizations` crea una organización, un admin inicial y la API key activa.
-- `GET /organizations/:organizationId` obtiene datos públicos de la organización.
-- `PATCH /organizations/:organizationId` actualiza el nombre de la organización (JWT requerido).
+### Gestión de Miembros
+- **Invitación**: `ADMIN` u `OWNER` pueden invitar usuarios por correo electrónico.
+- **Roles**: Se pueden asignar roles (`MEMBER`, `ADMIN`) a los usuarios invitados.
+- **Transferencia de Propiedad**: El `OWNER` actual puede transferir la propiedad a otro miembro, pasando a ser `ADMIN` o `MEMBER`.
+- **Salida**: Los usuarios pueden abandonar una organización voluntariamente.
 
-## Casos de error
-- `Invalid organization data` cuando falta el nombre.
-- `Invalid user data` cuando faltan datos del admin inicial.
-- `Invalid email` cuando el email del admin no es válido.
-- `Email already in use` si el email del admin ya existe.
-- `Organization not found` cuando la organización no existe.
-- `Organization mismatch` cuando el JWT no coincide con la organización.
+## Roles y Permisos
+- **OWNER**: Control total, gestión de facturación (futuro), eliminación de org, transferencia de propiedad.
+- **ADMIN**: Gestión de usuarios, proyectos, API keys, configuración de org (nombre).
+- **MEMBER**: Acceso a proyectos, incidentes, lectura de configuraciones, creación de incidentes.
 
-## Ejemplos de payloads
-- Crear organización
-  ```json
-  {
-    "name": "Observa",
-    "admin": {
-      "name": "Admin",
-      "username": "admin",
-      "email": "admin@observa.com",
-      "password": "secret123"
-    }
-  }
-  ```
-- Actualizar organización
-  ```json
-  {
-    "name": "Observa Labs"
-  }
-  ```
+## Relación con Auth
+El guardia `RolesGuard` utiliza la información de `OrganizationUser` para validar el acceso a los recursos protegidos por organización.

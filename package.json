@@ -1,6 +1,6 @@
 {
   "name": "@observa/sdk",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "Observa SDK for Node.js",
   "type": "module",
   "main": "./dist/index.js",
@@ -21,7 +21,8 @@
     }
   },
   "files": [
-    "dist"
+    "src/",
+    "dist/"
   ],
   "sideEffects": false,
   "engines": {
@@ -33,10 +34,11 @@
     "jest": "^29.7.0",
     "standard-version": "^9.5.0",
     "ts-jest": "^29.1.2",
+    "tsup": "^8.0.1",
     "typescript": "^5.6.3"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsup src/index.ts --format esm --dts --sourcemap --outDir dist",
     "changelog": "standard-version --skip.bump --skip.commit --skip.tag",
     "release": "standard-version",
     "release:major": "standard-version --release-as major",

@@ -32,12 +32,13 @@ const DEFAULT_NORMALIZATION: Required<IngestNormalizationOptions> = {
  */
 export class IngestApi {
     /**
-     * Creates the ingestion client with an optional default DSN.
+     * Creates the ingestion client with an optional default DSN and PublicKey.
      */
     constructor(
         private readonly http: HttpClient,
         private readonly defaultDsnKey?: string,
-        private readonly normalization?: IngestNormalizationOptions
+        private readonly normalization?: IngestNormalizationOptions,
+        private readonly defaultPublicKey?: string
     ) { }
 
     /**
@@ -46,9 +47,16 @@ export class IngestApi {
     async event(input: IngestRequest): Promise<IngestResponse> {
         ensureDefined(input, 'input')
         const dsnKey = input.dsnKey ?? this.defaultDsnKey
+        const publicKey = input.publicKey ?? this.defaultPublicKey
+
         ensureDefined(dsnKey, 'dsnKey')
         ensureNonEmpty(dsnKey, 'dsnKey')
         ensureDefined(input.event, 'event')
+
+        if (!this.http.hasApiKey() && !publicKey) {
+            throw new ValidationError('publicKey is required when apiKey is not provided')
+        }
+
         if (input.idempotencyKey && input.idempotencyKey.length > 128) {
             throw new ValidationError('idempotencyKey must be at most 128 characters')
         }
@@ -57,14 +65,20 @@ export class IngestApi {
         if (input.sdkVersion) headers['x-sdk-version'] = input.sdkVersion
         const { idempotencyKey, sdkVersion, event, ...body } = input
         const normalizedEvent = normalizeEvent(event, this.normalization)
-        return this.http.post<IngestResponse>('/ingest/events', { ...body, dsnKey, event: normalizedEvent }, { auth: 'apiKey', headers })
+        
+        const authMode = this.http.hasApiKey() ? 'apiKey' : 'none'
+        return this.http.post<IngestResponse>('/ingest/events', { ...body, dsnKey, publicKey, event: normalizedEvent }, { auth: authMode, headers })
     }
 
-    async health(dsnKey?: string): Promise<{ ok: boolean }> {
+    async health(dsnKey?: string, publicKey?: string): Promise<{ ok: boolean }> {
         const resolvedDsnKey = dsnKey ?? this.defaultDsnKey
+        const resolvedPublicKey = publicKey ?? this.defaultPublicKey
+
         ensureDefined(resolvedDsnKey, 'dsnKey')
         ensureNonEmpty(resolvedDsnKey, 'dsnKey')
-        return this.http.post<{ ok: boolean }>('/ingest/health', { dsnKey: resolvedDsnKey }, { auth: 'apiKey' })
+        
+        const authMode = this.http.hasApiKey() ? 'apiKey' : 'none'
+        return this.http.post<{ ok: boolean }>('/ingest/health', { dsnKey: resolvedDsnKey, publicKey: resolvedPublicKey }, { auth: authMode })
     }
 }
 

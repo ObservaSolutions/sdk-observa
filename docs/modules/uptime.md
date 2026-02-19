@@ -18,6 +18,7 @@ Complementa el monitoreo de errores con señales de salud. Permite saber si un s
 - Un día se divide en 24 slots horarios; si falta un heartbeat en un slot, se considera hora faltante.
 - Si el heartbeat llega tarde, se registra como delay en el resumen diario.
 - El resumen permite ajustar días y umbral de delay para análisis.
+- `status` permitido: `up`, `down`, `degraded`.
 
 ## Entidades y propiedades
 - UptimeEvent: id, projectId, status, message, responseTimeMs, checkedAt, createdAt.
@@ -32,15 +33,15 @@ Complementa el monitoreo de errores con señales de salud. Permite saber si un s
 - Consume auth para validar API key.
 
 ## Endpoints
-- `POST /uptime/heartbeats` registra un heartbeat del SDK.
-- `GET /projects/:projectId/uptime/history?date=YYYY-MM-DD` histórico diario.
-- `GET /projects/:projectId/uptime/latest` último heartbeat.
-- `GET /projects/:projectId/uptime/summary?days=90&delayThresholdMinutes=10` resumen diario (hasta 365 días).
+- `POST /v1/uptime/heartbeats` registra un heartbeat del SDK.
+- `GET /v1/projects/:projectId/uptime/history?date=YYYY-MM-DD` histórico diario.
+- `GET /v1/projects/:projectId/uptime/latest` último heartbeat.
+- `GET /v1/projects/:projectId/uptime/summary?days=90&delayThresholdMinutes=10` resumen diario (hasta 365 días).
 
 ## Casos de error
 - `Invalid heartbeat payload` cuando faltan campos requeridos.
 - `Project not found` cuando el `dsnKey` o `projectId` no existe.
-- `Organization mismatch` cuando la API key no coincide con la organización.
+- `Organization mismatch` cuando la API key no coincide con la organización o no tiene acceso al proyecto.
 - `Invalid status` cuando el status no es válido.
 - `Invalid response time` cuando responseTimeMs es negativo o inválido.
 - `Invalid checkedAt` cuando la fecha no es válida.

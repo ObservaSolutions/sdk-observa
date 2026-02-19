@@ -1,41 +1,28 @@
-# Projects
+# Módulo Projects
 
-## Objetivo
-Crear y listar proyectos de una organización, generando el `dsnKey` que usa el SDK.
+Gestiona el ciclo de vida de los proyectos dentro de las organizaciones. Un proyecto es la unidad fundamental donde se agrupan los eventos de error y las configuraciones de monitoreo.
 
-## Rol en el negocio
-El proyecto es la unidad de monitoreo. Cada evento, incidente y heartbeat se asocia a un proyecto, lo que permite segmentar la observabilidad por servicio o producto.
+## Entidades Principales
 
-## Funcionamiento
-- Cada proyecto pertenece a una organización y se crea con un nombre.
-- Se genera un `dsnKey` único al crear el proyecto.
-- El `dsnKey` es el identificador del SDK para ingesta de eventos y uptime.
+### Project
+- **Organization**: Cada proyecto pertenece a una organización.
+- **Type**: Define el entorno del proyecto.
+    - `BACKEND`: Proyectos de servidor. Solo requieren `dsnKey` y autenticación segura (`x-api-key`).
+    - `FRONTEND`: Aplicaciones web cliente. Requieren `publicKey` para ingestión pública.
+    - `MOBILE`: Aplicaciones móviles. Similar a frontend, requieren `publicKey`.
+- **Keys**:
+    - `dsnKey`: Identificador único privado/interno del proyecto. Se genera siempre.
+    - `publicKey`: Identificador público para uso en clientes (browser/mobile). Solo se genera para proyectos `FRONTEND` y `MOBILE`.
 
-## Entidades y propiedades
-- Project: id, organizationId, name, isActive, createdAt, updatedAt, dsnKey.
+## Funcionalidad
 
-## Reglas y validaciones
-- El nombre es obligatorio y se normaliza antes de guardar.
-- Las operaciones requieren JWT bearer y rol válido.
-- organizationId se toma del JWT; el path se valida contra el token.
+### Creación de Proyectos
+Al crear un proyecto, el sistema genera automáticamente las credenciales necesarias según el tipo seleccionado.
+- `BACKEND` -> Genera `dsnKey`. `publicKey` es `null`.
+- `FRONTEND`/`MOBILE` -> Genera `dsnKey` y `publicKey`.
 
-## Consumos y dependencias
-- Consumido por ingest y uptime para resolver `dsnKey`.
-- Consumido por incidents para validar pertenencia del proyecto.
+### Validación
+El módulo provee métodos para buscar proyectos por `dsnKey` o `publicKey`, permitiendo al módulo de ingestión validar el destino de los eventos.
 
-## Endpoints
-- `POST /organizations/:organizationId/projects` crea un proyecto y devuelve el `dsnKey` (JWT requerido).
-- `GET /organizations/:organizationId/projects` lista proyectos de la organización (JWT requerido).
-
-## Casos de error
-- `Invalid project data` cuando falta el nombre.
-- `Organization mismatch` cuando el JWT no coincide con la organización.
-- `Forbidden` cuando el rol no tiene permisos.
-
-## Ejemplos de payloads
-- Crear proyecto
-  ```json
-  {
-    "name": "Observa Backend"
-  }
-  ```
+### Relación con API Keys
+Aunque los proyectos tienen sus propias keys (`dsn` y `public`), el acceso administrativo y la ingestión desde servidores (backend) siguen dependiendo de las `ApiKeys` de la organización. La `publicKey` es una excepción para permitir ingestión anónima/pública controlada por rate limiting.

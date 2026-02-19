@@ -1,60 +1,36 @@
-# Incidents
+# Módulo Incidents
 
-## Objetivo
-Administrar incidentes por proyecto y exponer un historial público de estado.
+Este módulo gestiona el ciclo de vida de los incidentes reportados por los usuarios. Un incidente es un evento de negocio o técnico que requiere seguimiento y resolución manual o automatizada, agrupando múltiples eventos de error similares o reportes directos.
 
-## Rol en el negocio
-Permite comunicar interrupciones, investigar errores y registrar el progreso de resolución. Cada incidente reúne cambios de estado que luego se publican como historial.
+## Entidades Principales
 
-## Funcionamiento
-- Los usuarios autenticados por JWT crean incidentes y publican updates.
-- Cada update guarda un estado y un mensaje descriptivo.
-- El historial público se consulta por fecha y agrupa updates del día.
+### Incident
+- **Title**: Título descriptivo del incidente.
+- **Status**: Estado actual del incidente (ej. `OPEN`, `RESOLVED`, `IGNORED`).
+- **StartedAt**: Fecha y hora en que comenzó el incidente.
+- **Project**: Proyecto al que pertenece el incidente.
+- **Updates**: Historial de cambios de estado y comentarios.
 
-## Entidades y propiedades
-- Incident: id, projectId, title, status, message, startedAt, resolvedAt, createdAt, updatedAt.
-- IncidentUpdate: id, incidentId, status, message, createdAt.
+### IncidentUpdate
+- **Status**: Nuevo estado del incidente.
+- **Message**: Comentario o nota explicativa del cambio.
+- **CreatedAt**: Fecha del cambio.
 
-## Reglas y validaciones
-- Solo usuarios de la organización del proyecto pueden crear o actualizar.
-- Los estados se mantienen consistentes y actualizan el incidente principal.
-- La consulta pública no requiere autenticación.
+## Funcionalidad
 
-## Flujos principales
-- Crear incidente con estado inicial y primer update.
-- Agregar update que refleja cambios de estado y mensaje.
-- Consultar historial público por fecha del proyecto.
+### Creación y Gestión
+- **Reportar incidente**: Los usuarios pueden crear incidentes manualmente para tracking de problemas conocidos.
+- **Actualizar estado**: Se puede cambiar el estado de un incidente (`OPEN` -> `RESOLVED`) agregando un mensaje opcional.
+- **Historial**: Cada cambio de estado genera un registro en `IncidentUpdate` para auditoría y seguimiento.
 
-## Consumos y dependencias
-- Usa projects para validar pertenencia del proyecto.
-- Usa auth-web para garantizar permisos por rol.
+### Consultas
+- **Listar incidentes**: Obtener todos los incidentes de un proyecto.
+- **Histórico**: Obtener incidentes agrupados por fecha para visualización en calendarios o líneas de tiempo.
+- **Detalle**: Obtener información completa de un incidente específico incluyendo sus actualizaciones.
 
-## Endpoints
-- `GET /projects/:projectId/incidents/history?date=YYYY-MM-DD` historial público por fecha.
-- `GET /projects/:projectId/incidents` lista incidentes del proyecto.
-- `POST /projects/:projectId/incidents` crea un incidente.
-- `POST /projects/:projectId/incidents/:incidentId/updates` agrega un update.
+## Relación con Ingestión
+Aunque actualmente los incidentes se crean manualmente o vía API, en el futuro se planea que la ingestión masiva de eventos de error similares pueda disparar la creación automática de un incidente o agruparse bajo uno existente.
 
-## Casos de error
-- `Project not found` cuando el proyecto no existe.
-- `Organization mismatch` cuando la organización no coincide.
-- `Invalid status` cuando el estado es inválido.
-- `Invalid incident data` cuando faltan campos requeridos.
-
-## Ejemplos de payloads
-- Crear incidente
-  ```json
-  {
-    "title": "Interrupción parcial",
-    "status": "investigating",
-    "message": "Estamos investigando el problema",
-    "startedAt": "2026-01-04T10:00:00.000Z"
-  }
-  ```
-- Agregar update
-  ```json
-  {
-    "status": "monitoring",
-    "message": "Mitigación aplicada, monitoreando"
-  }
-  ```
+## Seguridad
+- **Creación/Edición**: Requiere rol `MEMBER` o superior.
+- **Lectura**: Requiere rol `MEMBER` o superior (excepto endpoint público de histórico si se habilita).

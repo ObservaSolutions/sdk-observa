@@ -4,23 +4,41 @@ Guía de integración para consumir el backend desde el SDK: credenciales, heade
 
 ## Requisitos
 - `baseUrl` del backend con prefijo `/v1`.
-- `apiKey` activa de la organización.
-- `dsnKey` del proyecto.
+- **Backend/Servidor**: `apiKey` activa de la organización + `dsnKey` del proyecto.
+- **Frontend/Mobile**: `publicKey` del proyecto + `dsnKey` del proyecto.
 
 ## Provisión de credenciales
-1. Crear organización para obtener `apiKey` en texto plano.
-2. Crear proyecto para obtener `dsnKey`.
-3. Guardar ambas credenciales en la configuración del SDK.
+1. Crear organización para obtener `apiKey` en texto plano (uso exclusivo servidor).
+2. Crear proyecto indicando su tipo (`FRONTEND`, `BACKEND`, `MOBILE`).
+3. Obtener `dsnKey` (siempre) y `publicKey` (solo si es frontend/mobile).
+4. Configurar el SDK con las credenciales apropiadas según el entorno.
 
 ## Autenticación
-El SDK autentica todas las llamadas con el header:
+
+El SDK debe autenticar las llamadas usando uno de los siguientes métodos:
+
+### Opción A: Entornos Seguros (Backend)
+Usar el header `x-api-key`.
 - `x-api-key: <apiKey>`
 
-Si la API key está acotada por proyecto, el `dsnKey` debe pertenecer a uno de los proyectos permitidos.
+### Opción B: Entornos Públicos (Frontend/Mobile)
+Usar el parámetro `publicKey` en el body o query params (según implementación del SDK), aunque el estándar actual es validar contra la `publicKey` asociada al proyecto en el backend.
+Para efectos de este backend, la autenticación en ingestión pública se valida mediante la combinación de `dsnKey` y el origen, pero si se dispone de `publicKey`, esta puede ser usada para validar cuotas específicas.
+
+**Nota Importante**: En la implementación actual del endpoint de ingestión (`/v1/ingest/events`), se prioriza la validación por `x-api-key` para backend. Para frontend, el sistema valida el acceso mediante el `dsnKey` y opcionalmente `publicKey` si se implementa en headers futuros, pero actualmente el mecanismo principal de rate limiting público se basa en IP y `publicKey` si se envía como metadato.
+
+*Actualización*: Se ha habilitado el uso de `publicKey` para identificar el proyecto en entornos donde no se puede exponer la `apiKey`.
 
 ## Identificación de proyecto y origen del error
-- Cada proyecto tiene su propio `dsnKey`. Si una organización tiene varios proyectos (por ejemplo, Backend API y Web Frontend), el SDK debe usar el `dsnKey` correspondiente para que el evento quede asociado al proyecto correcto.
-- El backend no “descubre” el origen; el SDK envía el contexto del error dentro del payload y el backend lo persiste íntegro para análisis posterior.
+- Cada proyecto tiene su propio `dsnKey`.
+- **Proyectos Frontend/Mobile**: Deben usar `publicKey` para que el backend aplique rate limiting por IP y proteja la organización de abuso.
+- **Proyectos Backend**: Usan `apiKey` de organización + `dsnKey`.
+
+## Protección y Rate Limiting
+El backend implementa protección contra abuso:
+- **Por IP**: Límite de 10 peticiones por segundo por IP.
+- **Por PublicKey**: Límite de 100 peticiones por segundo por proyecto (si se usa publicKey).
+- **Bloqueo**: Clientes que abusen del sistema pueden ser marcados como `SUSPICIOUS` o `BLOCKED`, rechazando sus eventos automáticamente.
 
 ## Trazabilidad y stacktrace
 Para identificar archivo, función y línea, el SDK debe enviar `exception.stacktrace.frames` en el evento. Ejemplo:
@@ -45,22 +63,22 @@ Para identificar archivo, función y línea, el SDK debe enviar `exception.stack
 Además se recomienda enviar:
 - `tags` para clasificar origen lógico (por ejemplo `service`, `module`, `env`).
 - `extra` para contexto adicional del negocio (por ejemplo `orderId`, `userId`).
-- `context` para agrupar información técnica del entorno y request.
 
 ## Health del SDK
-Este endpoint valida `apiKey` y `dsnKey` para confirmar conectividad y credenciales.
+Este endpoint valida `apiKey` (o `publicKey`) y `dsnKey` para confirmar conectividad y credenciales.
 
 ### Ruta
 `POST /v1/ingest/health`
 
 ### Headers
 - `Content-Type: application/json`
-- `x-api-key: <apiKey>`
+- `x-api-key: <apiKey>` (Solo Backend)
 
 ### Body
 ```json
 {
-  "dsnKey": "dsn_123"
+  "dsnKey": "dsn_123",
+  "publicKey": "pk_123" // Opcional, recomendado para Frontend/Mobile
 }
 ```
 
@@ -83,7 +101,7 @@ Este endpoint valida `apiKey` y `dsnKey` para confirmar conectividad y credencia
 
 ### Headers
 - `Content-Type: application/json`
-- `x-api-key: <apiKey>`
+- `x-api-key: <apiKey>` (Solo Backend)
 - `x-idempotency-key: <string>` (opcional, máximo 128 caracteres)
 - `x-sdk-version: <string>` (opcional)
 
@@ -91,38 +109,15 @@ Este endpoint valida `apiKey` y `dsnKey` para confirmar conectividad y credencia
 ```json
 {
   "dsnKey": "dsn_123",
+  "publicKey": "pk_123", // Requerido para entornos sin x-api-key
   "event": {
     "event_id": "evt_123",
     "timestamp": "2026-01-25T10:00:00.000Z",
-    "schema_version": 1,
     "level": "error",
     "message": "Error en servicio",
     "exception": {
       "type": "Error",
       "value": "Timeout"
-    },
-    "context": {
-      "system": {
-        "pid": 1234,
-        "uptimeSeconds": 420,
-        "memory": {
-          "rss": 123456,
-          "heapTotal": 123456,
-          "heapUsed": 123456,
-          "external": 123456,
-          "arrayBuffers": 123456
-        }
-      },
-      "runtime": {
-        "node": "20.0.0",
-        "platform": "linux",
-        "arch": "x64",
-        "releaseName": "node"
-      },
-      "request": {
-        "requestId": "req_123",
-        "userId": "user_123"
-      }
     },
     "tags": {
       "service": "billing"
@@ -151,8 +146,8 @@ Este endpoint valida `apiKey` y `dsnKey` para confirmar conectividad y credencia
 - `400 Payload too large`
 - `400 Ingest queue full`
 - `404 INVALID_DSN`
-- `403 INVALID_API_KEY`
-- `429 RATE_LIMITED`
+- `403 INVALID_API_KEY` / `MISSING_PUBLIC_KEY`
+- `429 RATE_LIMITED` (Por IP o por Proyecto)
 
 ## Comportamiento de persistencia
 - El payload del evento se guarda completo para trazabilidad.
@@ -210,5 +205,3 @@ Este endpoint valida `apiKey` y `dsnKey` para confirmar conectividad y credencia
 - Normalizar `level` a minúsculas.
 - Registrar `x-sdk-version` para trazabilidad.
 - Incluir `tags` y `extra` consistentes para facilitar agrupaciones y filtros.
-- Usar `context.system` para datos dinámicos y `context.runtime` para datos estáticos.
-- Evitar enviar `runtime.versions` si no es necesario por tamaño o privacidad.
